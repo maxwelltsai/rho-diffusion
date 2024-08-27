@@ -261,6 +261,7 @@ class DiffusersDDPMPipeline(AbstractDiffusionPipeline):
             conditions=cond,
             t_checkpoints=self.t_checkpoints,
         )
+
         figure = self.make_image_grid(
             results["denoised"],
             filename=save_figure_as

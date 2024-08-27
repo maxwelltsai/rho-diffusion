@@ -57,6 +57,7 @@ class DeepGalaxyDataset(MultiVariateDataset):
         t_lim: list = None,
         transform: torchvision.transforms.transforms.Compose = None,
         target_transform: torchvision.transforms.transforms.Compose = None,
+        load=True
     ):
         self.h5fn = path
         self.use_emb_labels = use_emb_as_labels
@@ -94,7 +95,8 @@ class DeepGalaxyDataset(MultiVariateDataset):
         self.transform = transform
         self.target_transform = target_transform
 
-        self.load(dset_name_pattern, camera_pos, t_lim)
+        if load is True:
+            self.load(dset_name_pattern, camera_pos, t_lim)
 
     def __len__(self):
         if self.data is None:
@@ -121,6 +123,9 @@ class DeepGalaxyDataset(MultiVariateDataset):
             camera_pos=camera_pos,
             t_lim=t_lim,
         )
+        
+        data = data / data.max() 
+        print('max min', data.max(), data.min(), data.mean())
         # self.data = torch.ByteTensor(data)
         self.data = torch.FloatTensor(data.swapaxes(1, 3))
         # self.data = data

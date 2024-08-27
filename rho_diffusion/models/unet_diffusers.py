@@ -4,7 +4,7 @@ import torch.nn as nn
 from diffusers import DDPMScheduler, UNet2DConditionModel, UNet2DModel
 from rho_diffusion.registry import registry
 
-@registry.register_model("UNet_Diffuser")
+@registry.register_model("UNet_Diffusers")
 class UNet_nd(nn.Module):
     def __init__(
         self,
@@ -50,8 +50,8 @@ class UNet_nd(nn.Module):
                 "AttnUpBlock2D",      # a ResNet upsampling block with spatial self-attention
                 "UpBlock2D",          # a regular ResNet upsampling block
             ),
-            # num_class_embeds=None
-            class_embed_type='identity'
+            num_class_embeds=None
+            # class_embed_type='identity'
         )
 
     def forward(self, x, timesteps, y=None):
@@ -60,13 +60,15 @@ class UNet_nd(nn.Module):
         
         if y is not None:
             # import pdb; pdb.set_trace()
-            # cond = self.cond_fn(y).view(x.shape[0], y.shape[0], 1, 1).expand(x.shape[0], y.shape[0], self.data_shape[0], self.data_shape[1])
+            emb = self.cond_fn(y)
+            # cond = emb.view(x.shape[0], 1, emb.shape[1], 1).expand(x.shape[0], 1, self.data_shape[0], self.data_shape[1])
             # net_input = torch.cat((x, cond), 1) 
             cond = self.cond_fn(y)
             net_input = x 
         else:
             net_input = x 
-        model_out = self.model(sample=net_input, timestep=timesteps, class_labels=cond).sample 
+        # model_out = self.model(sample=net_input, timestep=timesteps, class_labels=cond).sample 
+        model_out = self.model(sample=net_input, timestep=timesteps).sample 
         # if y is not None:
         #     print(model_out.shape, self.cond_fn(y).shape)
         #     model_out += self.cond_fn(y)

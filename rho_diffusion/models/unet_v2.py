@@ -279,9 +279,12 @@ class ResBlock(TimestepBlock):
             h = in_conv(h)
         else:
             h = self.in_layers(x)
+
         emb_out = self.emb_layers(emb).type(h.dtype)
         while len(emb_out.shape) < len(h.shape):
             emb_out = emb_out[..., None]
+
+
         if self.use_scale_shift_norm:
             out_norm, out_rest = self.out_layers[0], self.out_layers[1:]
             scale, shift = torch.chunk(emb_out, 2, dim=1)
@@ -513,15 +516,15 @@ class UNet(nn.Module):
         self.num_head_channels = num_head_channels
         self.num_heads_upsample = num_heads_upsample
 
-        embedding_dim = model_channels * 4
+        embedding_dim = model_channels * 2  # first half is for time embedding, second half is for condition embedding
 
         if isinstance(activation, str):
             activation = registry.get("activations", activation)()
 
         self.time_embed = nn.Sequential(
-            nn.Linear(model_channels, embedding_dim),
+            nn.Linear(model_channels, model_channels),
             activation,
-            nn.Linear(embedding_dim, embedding_dim),
+            nn.Linear(model_channels, model_channels),
         )
 
         self.cond_fn = cond_fn
@@ -696,28 +699,33 @@ class UNet(nn.Module):
         ), "must specify y if and only if the model is class-conditional"
 
         hs = []
-        emb = self.time_embed(
+        time_emb = self.time_embed(
             sinosoidal_position_embedding(timesteps, self.model_channels),
         )
-        if self.num_classes is not None:
+        if y is not None:
+            # emb_cls = self.cond_fn(y)
+            # cond = emb_cls.view(x.shape[0], 1, emb_cls.shape[1], 1).expand(x.shape[0], 1, self.data_shape[0], self.data_shape[1])
+            # x = torch.cat((x, cond), 1) 
+            # import pdb; pdb.set_trace()
             if y.dim() == 1:
                 assert y.shape == (x.shape[0],)
                 # if self.label_emb is None:
                 #     self.label_emb = nn.Embedding(self.num_classes, self.model_channels * 4).to(y.device)
                 # emb = emb + self.label_emb(y)
-                emb = emb + self.cond_fn(y)
+                emb = torch.cat((time_emb, self.cond_fn(y)), 1)
             elif y.dim() == 2:
-                if y.shape == emb.shape:
+                if y.shape == time_emb.shape:
                     # the labels are already embedding
-                    if y.device != emb.device:
-                        emb = emb + y.to(emb.device)
+                    if y.device != time_emb.device:
+                        time_emb = time_emb + y.to(time_emb.device)
                     else:
-                        emb = emb + y
+                        time_emb = time_emb + y
                 else:
                     # Multi-categorical labels
-                    assert y.shape[0] == emb.shape[0]  # make sure that the batch sizes match
-                    emb = emb + self.cond_fn(y)
-
+                    assert y.shape[0] == time_emb.shape[0]  # make sure that the batch sizes match
+                    emb = torch.cat((time_emb, self.cond_fn(y)), 1)
+                    # print(emb.max(), emb.min(), emb.mean())
+            
 
         h = x.type(self.dtype)
         for module in self.input_blocks:

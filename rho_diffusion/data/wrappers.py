@@ -111,6 +111,6 @@ class MNISTDataset(MNIST, UnivariateDataset):
             [
                 t.Resize((32, 32)),
                 t.ToTensor(),  # Scales data into [0,1]
-                t.Lambda(lambda t: (t * 2) - 1),  # Scale between [-1, 1]
+                # t.Lambda(lambda t: (t * 2) - 1),  # Scale between [-1, 1]
             ],
         )

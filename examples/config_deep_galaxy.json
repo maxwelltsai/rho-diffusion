@@ -16,7 +16,7 @@
         16,
         8
       ],
-      "use_scale_shift_norm": true,
+      "use_scale_shift_norm": false,
       "num_heads": 4,
       "num_classes": 25,
       "activation": "SiLU",
@@ -60,7 +60,7 @@
     "device": "xpu",
     "np": 1,
     "save_checkpoint_every_n_epochs": 100,
-    "sample_every_n_epochs": 10,
+    "sample_every_n_epochs": 1,
     "loss_fn": "MSELoss",
     "ema_decay": 0.0,
     "batch_size": 64,
@@ -103,7 +103,7 @@
         500
       ],
       "c": [
-        0
+        0, 1, 2
       ]
     },
     "cache_file": "inference_output_deepgalaxy.h5",

@@ -90,7 +90,7 @@ schedule = diffusers.DDPMScheduler(
     variance_type='fixed_large',
     # variance_type='learned',
     clip_sample=True,
-    clip_sample_range=0.5,
+    clip_sample_range=1.0,
     rescale_betas_zero_snr=True
 )
 
@@ -109,14 +109,15 @@ train_loader = DataLoader(
 
 # cond_fn = MultiEmbeddings(dset.parameter_space, embedding_dim=128).to(device)
 
-ddpm = diffusion.DiffusersDDPMPipeline(
+# ddpm = diffusion.DiffusersDDPMPipeline(
+ddpm = diffusion.GaussianDiffusionPipeline(
     backbone=config.model.name,
     backbone_kwargs=config.model.kwargs,
     schedule=schedule,
     loss_func=config.training.loss_fn,
     timesteps=config.noise_schedule.kwargs['num_steps'],
     cond_fn=config.model.kwargs['cond_fn'],
-    cond_fn_kwargs={'parameter_space': dset.parameter_space, 'embedding_dim': 128},
+    cond_fn_kwargs={'parameter_space': dset.parameter_space, 'embedding_dim': config.model.kwargs['model_channels']},
     optimizer=config.optimizer.name,
     opt_kwargs=config.optimizer.kwargs,
     sample_every_n_epochs=config.training.sample_every_n_epochs,

@@ -51,15 +51,19 @@ class MultiEmbeddings(nn.Module):
         self.embedding_layers = nn.ModuleDict()
         self.label_encoders = OrderedDict()
         self.parameter_space = parameter_space
-        self.embedding_dim = embedding_dim
         self.__label_encoder_fitted = False
         if parameter_space is not None and len(parameter_space) > 0:
             # Initialize the embeddings using the parameter space dict
+            self.embedding_dim = embedding_dim // len(parameter_space) // 2
+            self.param_type_emb = nn.Embedding(num_embeddings=len(parameter_space), embedding_dim=self.embedding_dim)
             for key, value in self.parameter_space.items():
                 self.__label_encoder_fitted = True
                 self.embedding_layers[key] = nn.Embedding(num_embeddings=len(value), embedding_dim=self.embedding_dim)
+                print('emb dim', self.embedding_dim // len(self.parameter_space) / 2)
         elif embedding_size is not None:
             # if the parameter space is not yet known, the MultiEmbeddings object can also be setup if `parameter_space_dim` and/or `embedding_size` are known
+            self.embedding_dim = embedding_dim // embedding_size // 2 
+            self.param_type_emb = nn.Embedding(num_embeddings=embedding_size, embedding_dim=self.embedding_dim)
             if isinstance(embedding_size, int):
                 assert parameter_space_dim is not None, 'parameter_space_dim should be an int input when embedding_size is an int'
                 for i in parameter_space_dim:
@@ -115,28 +119,26 @@ class MultiEmbeddings(nn.Module):
     def forward(self, y: torch.Tensor) -> torch.Tensor:
         # assert y.dim() == 2
         emb = None
-        # if y.dim() == 1:
-        #     for key, layer in self.embedding_layers.items():
-        #         categorical = torch.where(y[:, None] == torch.tensor(self.parameter_space[key], device=y.device)[None, :])[1]
-        #         emb = layer(categorical)
-        #     return emb
-        # else:
+
         i = 0
         for key, layer in self.embedding_layers.items():
-            # Use the index of each element of the i-th feature in the parameter space as categorical
-            # print(y[:, i], self.parameter_space[key])
             if y.dim() == 1:
-                yi = y
+                yi = y  # the labels only consist of one single feature
             else:
-                yi = y[:, i]
+                yi = y[:, i]  # labels consists of multiple features
+
+            # obtain the categorial ID by matching the loaded labels with the parameter space
             categorical = torch.where(yi[:, None] == torch.tensor(self.parameter_space[key], device=y.device)[None, :])[1]
+            # import pdb; pdb.set_trace()
+            emb_param = self.param_type_emb(torch.tensor([i] * y.shape[0]).to(y.device))
+            emb_val = layer(categorical)
             if emb is None:
-                emb = layer(categorical)
+                emb = torch.cat([emb_param, emb_val], dim=1)
             else:
-                # print(categorical.shape, emb.shape)
-                emb += layer(categorical)
+                emb = torch.cat([emb, emb_param, emb_val], dim=1)
             i += 1
         return emb 
+
 
 
 class ClassifierGuidance(nn.Module):
